@@ -1,0 +1,35 @@
+---
+- hosts:
+    - all
+  become: true
+  tasks:
+    - name: Install Checkmk agent on RedHat family systems
+      block:
+        - name: Install Checkmk agent
+          ansible.builtin.include_role:
+            name: checkmk.general.agent
+          vars:
+            checkmk_agent_version: '{{ CHECKMK_AGENT_VERSION }}'
+            checkmk_agent_edition: 'cre'
+            checkmk_agent_server_protocol: 'https'
+            checkmk_agent_server: '{{ CHECKMK_SERVER }}'
+            checkmk_agent_server_validate_certs: 'true'
+            checkmk_agent_site: '{{ CHECKMK_SITE }}'
+            checkmk_agent_user: '{{ CHECKMK_AUTOMATION_USER }}'
+            checkmk_agent_secret: '{{ CHECKMK_AUTOMATION_SECRET }}'
+            checkmk_agent_auto_activate: 'true'
+            checkmk_agent_add_host: 'true'
+            checkmk_agent_host_name: '{{ inventory_hostname }}'
+            checkmk_agent_folder: '/'
+            checkmk_agent_discover: 'true'
+            checkmk_agent_tls: 'true'
+            checkmk_agent_configure_firewall: 'true'
+            checkmk_agent_configure_firewall_zone: 'public'
+            checkmk_agent_delegate_api_calls: 'localhost'
+        - name: Configure firewalld
+          ansible.posix.firewalld:
+            service: checkmk-agent
+            state: enabled
+            permanent: true
+            immediate: true
+      when: ansible_facts['os_family'] == 'RedHat'

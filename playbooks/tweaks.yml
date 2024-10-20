@@ -1,0 +1,29 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Create /etc/systemd/system-generators/
+      ansible.builtin.file:
+        path: /etc/systemd/system-generators/
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when:
+        - ansible_os_family == 'RedHat'
+        - ansible_facts['distribution_major_version'] == '9'
+    - name: Prevent systemd rc.local console logs
+      ansible.builtin.copy:
+        content: ''
+        dest: /etc/systemd/system-generators/systemd-rc-local-generator
+        force: false
+        owner: root
+        group: root
+        mode: '0644'
+      when:
+        - ansible_os_family == 'RedHat'
+        - ansible_facts['distribution_major_version'] == '9'
+    - name: Remove Insights registration MOTD
+      ansible.builtin.file:
+        path: /etc/motd.d/insights-client
+        state: absent

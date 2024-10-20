@@ -1,0 +1,12 @@
+---
+- hosts: tags_patching_easy
+  become: true
+  tasks:
+    - name: Update all installed packages
+      ansible.builtin.dnf:
+        name: '*'
+        state: latest
+      notify: reboot
+  handlers:
+    - name: reboot
+      ansible.builtin.reboot: null

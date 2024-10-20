@@ -1,0 +1,12 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Update all installed packages
+      ansible.builtin.dnf:
+        name: '*'
+        state: latest
+      register: dnf_update_status
+    - name: Reboot if packages were updated
+      ansible.builtin.reboot: null
+      when: dnf_update_status.changed

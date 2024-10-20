@@ -1,0 +1,14 @@
+---
+- hosts:
+    - all
+    - "!zabbix-alma9.ad.ryacom.org"
+  become: true
+  tasks:
+    - name: Install Zabbix agent
+      ansible.builtin.include_role:
+        name: community.zabbix.zabbix_agent
+      vars:
+        zabbix_agent_serveractive: zabbix.ad.ryacom.org
+        zabbix_agent_version: 6.4
+        zabbix_agent_install_agent_only: true
+      when: ansible_distribution == "AlmaLinux" or ansible_distribution == "RedHat"

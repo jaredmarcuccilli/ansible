@@ -1,0 +1,5 @@
+---
+- import_playbook: playbooks/ssh-keys.yml
+- import_playbook: playbooks/install-grafana-alloy.yml
+- import_playbook: playbooks/timesync.yml
+- import_playbook: playbooks/tweaks.yml

@@ -1,0 +1,19 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+    - name: Update cloudflared if it is installed
+      ansible.builtin.dnf:
+        name: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-x86_64.rpm
+        state: latest
+        disable_gpg_check: true
+      when: "'cloudflared' in ansible_facts.packages"
+      register: var_cloudflared_update_status
+    - name: Restart cloudflared if it was updated
+      ansible.builtin.service:
+        name: cloudflared
+        state: restarted
+      when: var_cloudflared_update_status.changed

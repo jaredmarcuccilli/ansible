@@ -1,0 +1,47 @@
+---
+- name: Join to Active Directory using realmd & sssd
+  hosts: all
+  become: true
+  tasks:
+    - name: Install AD integration role
+      ansible.builtin.import_role:
+        name: fedora.linux_system_roles.ad_integration
+      vars:
+        ad_integration_sssd_custom_settings:
+          - key: override_homedir
+            value: /home/%d/%u
+          - key: use_fully_qualified_names
+            value: "False"
+          - key: access_provider
+            value: simple
+          - key: simple_allow_groups
+            value: "{{ login_groups | join(', ') }}"
+          - key: ignore_group_members
+            value: "True"
+          - key: case_sensitive
+            value: "False"
+          - key: full_name_format
+            value: "%1$s"
+          - key: auto_private_groups
+            value: "True"
+          - key: pam_account_expired_message
+            value: Account is expired in Active Directory
+          - key: pam_account_locked_message
+            value: Account is locked in Active Directory
+    - name: Add sudoers.d file for specified groups
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/{{ item }}
+        line: "%{{ item }} ALL=(ALL) NOPASSWD: ALL"
+        create: true
+      with_items: "{{ sudoers_groups }}"
+    - name: Add notice to Ansible generated sudoers.d files
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/{{ item }}
+        line: "# This file was created by Ansible. Please do not modify."
+        insertbefore: BOF
+      with_items: "{{ sudoers_groups }}"
+  handlers:
+    - name: Restart sssd
+      ansible.builtin.service:
+        name: sssd
+        state: restarted

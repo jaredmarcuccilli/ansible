@@ -1,0 +1,89 @@
+---
+- hosts: all
+  become: true
+  vars:
+    var_available_updates:
+      stdout: Unknown
+    var_available_updates_security:
+      stdout: Unknown
+    var_available_updates_list:
+      stdout: Unknown
+  tasks:
+    - name: Get uptime
+      ansible.builtin.shell: |
+        uptime --pretty
+      register: var_uptime
+    - name: Get number of available updates for yum-based systems
+      ansible.builtin.shell: |
+        yum check-update | awk 'p;/^$/{p=1}' | grep -c "\."
+      register: var_available_updates
+      when: ansible_os_family == "RedHat"
+      failed_when: var_available_updates.rc not in [ 0, 1 ]
+    - name: Get number of available security updates for yum-based systems
+      ansible.builtin.shell: |
+        yum check-update --security | awk 'p;/^$/{p=1}' | grep -c "\."
+      register: var_available_updates_security
+      when: ansible_os_family == "RedHat"
+      failed_when: var_available_updates_security.rc not in [ 0, 1 ]
+    - name: Get list of available updates for yum-based systems
+      ansible.builtin.shell: |
+        yum check-update
+      register: var_available_updates_list
+      when: ansible_os_family == "RedHat"
+      failed_when: var_available_updates_list.rc not in [ 0, 100 ]
+    - name: Create platform based on distribution and version
+      netbox.netbox.netbox_platform:
+        netbox_url: "{{ NETBOX_API }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          name: "{{ ansible_distribution + ' ' + ansible_distribution_version }}"
+      delegate_to: localhost
+    - name: Create manufacturer, if not a VM
+      netbox.netbox.netbox_manufacturer:
+        netbox_url: "{{ NETBOX_API }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          name: "{{ ansible_system_vendor }}"
+      when: not ansible_virtualization_tech_guest|default(None)
+      delegate_to: localhost
+    - name: Create device type, if not a VM
+      netbox.netbox.netbox_device_type:
+        netbox_url: "{{ NETBOX_API }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          model: "{{ ansible_product_name }}"
+          manufacturer: "{{ ansible_system_vendor }}"
+      when: not ansible_virtualization_tech_guest|default(None)
+      delegate_to: localhost
+    - name: Update virtual machine data, if VM
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ NETBOX_API }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          name: "{{ inventory_hostname }}"
+          platform: "{{ ansible_distribution + ' ' + ansible_distribution_version }}"
+          custom_fields:
+            available_updates: "{{ var_available_updates.stdout }}"
+            available_updates_security: "{{ var_available_updates_security.stdout }}"
+            available_updates_list: "{{ var_available_updates_list.stdout }}"
+            last_ansible_checkin: "{{ ansible_date_time.date + ' ' + ansible_date_time.time }}"
+            uptime: "{{ var_uptime.stdout }}"
+      when: ansible_virtualization_tech_guest|default(None)
+      delegate_to: localhost
+    - name: Update device data, if not VM
+      netbox.netbox.netbox_device:
+        netbox_url: "{{ NETBOX_API }}"
+        netbox_token: "{{ NETBOX_TOKEN }}"
+        data:
+          name: "{{ inventory_hostname }}"
+          device_type: "{{ ansible_product_name }}"
+          serial: "{{ ansible_product_serial }}"
+          platform: "{{ ansible_distribution + ' ' + ansible_distribution_version }}"
+          custom_fields:
+            available_updates: "{{ var_available_updates.stdout }}"
+            available_updates_security: "{{ var_available_updates_security.stdout }}"
+            available_updates_list: "{{ var_available_updates_list.stdout }}"
+            last_ansible_checkin: "{{ ansible_date_time.date + ' ' + ansible_date_time.time }}"
+            uptime: "{{ var_uptime.stdout }}"
+      when: not ansible_virtualization_tech_guest|default(None)
+      delegate_to: localhost

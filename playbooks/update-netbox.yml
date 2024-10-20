@@ -1,0 +1,31 @@
+---
+- hosts: netbox-alma9.ad.ryacom.org
+  become: true
+  tasks:
+    - name: Stop containers
+      ansible.builtin.shell: |
+        docker compose down
+      args:
+        chdir: /opt/netbox-docker
+    - name: Git checkout
+      ansible.builtin.shell: |
+        git checkout release
+      args:
+        chdir: /opt/netbox-docker
+    - name: Git pull
+      ansible.builtin.shell: |
+        git pull -p origin release
+      args:
+        chdir: /opt/netbox-docker
+    - name: Docker pull
+      ansible.builtin.shell: |
+        docker compose pull
+      args:
+        chdir: /opt/netbox-docker
+    - name: Start containers
+      ansible.builtin.shell: |
+        docker compose up -d
+      args:
+        chdir: /opt/netbox-docker
+      async: 120
+      poll: 10

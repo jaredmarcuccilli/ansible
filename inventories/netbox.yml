@@ -1,0 +1,13 @@
+---
+plugin: netbox.netbox.nb_inventory
+api_endpoint: https://netbox.ryacom.org
+validate_certs: false
+group_by:
+  - sites
+  - tenants
+  - racks
+  - tags
+  - device_roles
+  - device_types
+  - manufacturers
+  - platforms

@@ -1,0 +1,62 @@
+---
+- name: Install Grafana Alloy
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+    - name: Import Grafana rpm gpg key
+      ansible.builtin.rpm_key:
+        state: present
+        key: https://rpm.grafana.com/gpg.key
+    - name: Add Grafana repository
+      ansible.builtin.yum_repository:
+        name: grafana
+        description: grafana
+        baseurl: https://rpm.grafana.com
+        enabled: true
+        repo_gpgcheck: true
+        gpgcheck: true
+        gpgkey: https://rpm.grafana.com/gpg.key
+        sslverify: true
+        sslcacert: /etc/pki/tls/certs/ca-bundle.crt
+    - name: Install Grafana Alloy
+      ansible.builtin.package:
+        name: alloy
+        state: present
+    - name: Install configuration template
+      ansible.builtin.template:
+        src: ../templates/config.alloy.j2
+        dest: /etc/alloy/config.alloy
+        owner: root
+        group: alloy
+        mode: '0640'
+      notify: Reload alloy.service
+    - name: Install customized systemd unit file template
+      ansible.builtin.template:
+        src: ../templates/alloy.service.j2
+        dest: /etc/systemd/system/alloy.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload alloy.service
+    - name: Ensure alloy.service is running
+      ansible.builtin.service:
+        name: alloy
+        state: started
+    - name: Tasks if docker-ce package is installed
+      block:
+        - name: Add alloy user to docker group
+          ansible.builtin.user:
+            name: alloy
+            groups: docker
+            append: yes
+          notify: Reload alloy.service
+      when: "'docker-ce' in ansible_facts.packages"
+  handlers:
+    - name: Reload alloy.service
+      ansible.builtin.service:
+        name: alloy
+        state: reloaded
+        daemon_reload: true
